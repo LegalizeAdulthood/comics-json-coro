@@ -6,7 +6,8 @@ project(comics-json-coro CXX)
 
 include(CTest)
 
-set( CMAKE_CXX_STANDARD 17 )
+# coroutines require C++20
+set( CMAKE_CXX_STANDARD 20 )
 set( CMAKE_CXX_STANDARD_REQUIRED TRUE )
 set( CMAKE_CXX_EXTENSIONS OFF )
 
