@@ -189,7 +189,7 @@ void JSONDatabase::printMatchingSequences(std::ostream &str, const std::string_v
             throw std::runtime_error("Sequence array element should be an object");
         }
 
-        for (const simdjson::dom::key_value_pair &field : record.get_object())
+        for (const simdjson::dom::key_value_pair field : record.get_object())
         {
             if (field.key == fieldName)
             {
