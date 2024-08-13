@@ -8,3 +8,4 @@ add_library(comics
 )
 target_include_directories(comics PUBLIC include)
 target_link_libraries(comics PUBLIC simdjson::simdjson)
+set_target_properties(comics PROPERTIES FOLDER "Libraries")
