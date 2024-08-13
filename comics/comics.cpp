@@ -6,7 +6,7 @@
 
 #include <simdjson.h>
 
-#include "comics.h"
+#include "comics/comics.h"
 
 namespace comics
 {

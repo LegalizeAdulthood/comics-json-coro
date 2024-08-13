@@ -1,7 +1,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "comics.h"
+#include <comics/comics.h>
 
 namespace
 {
