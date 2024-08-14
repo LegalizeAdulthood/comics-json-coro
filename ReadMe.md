@@ -1,6 +1,4 @@
-[![CMake workflow](https://github.com/LegalizeAdulthood/comics-simdjson/actions/workflows/cmake.yml/badge.svg)](https://github.com/LegalizeAdulthood/comics-simdjson/actions/workflows/cmake.yml)
-
-# Example Comics Database with simdjson
+# Example of Querying a Database with C++20 coroutines
 
 # Obtaining the Sample Data
 
