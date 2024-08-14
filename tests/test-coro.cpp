@@ -8,9 +8,11 @@
 
 using namespace testing;
 
+constexpr std::string_view NO_MATCHING_SCRIPT_NAME{"Barry Flargle"};
 constexpr std::string_view SCRIPT_NAME{"Stan Lee"};
 constexpr std::string_view PENCIL_NAME{"Jack Kirby"};
 constexpr std::string_view INK_NAME{"Steve Ditko"};
+constexpr std::string_view LETTERS_NAME_ONE_MATCH{"John Duffy"};
 constexpr std::string_view ISSUES{R"ish(
     [
         {
@@ -122,7 +124,7 @@ constexpr std::string_view SEQUENCES{R"seq(
             "genre": "superhero",
             "inks": "Steve Ditko (credited) (art)",
             "issue": "17568",
-            "letters": "Jon D&#x27;Agostino (credited as  Johnny Dee) (lettering)",
+            "letters": "Jon D'Agostino (credited as  Johnny Dee) (lettering)",
             "pencils": "Steve Ditko (credited) (art)",
             "script": "Stan Lee (credited)",
             "sequence_number": "1",
@@ -152,8 +154,8 @@ class MockDatabase : public testing::StrictMock<comics::Database>
 public:
     ~MockDatabase() override = default;
 
-    MOCK_METHOD(const simdjson::simdjson_result<simdjson::dom::element> &, getIssues, (), (const, override));
-    MOCK_METHOD(const simdjson::simdjson_result<simdjson::dom::element> &, getSequences, (), (const, override));
+    MOCK_METHOD(simdjson::simdjson_result<simdjson::dom::element>, getIssues, (), (const, override));
+    MOCK_METHOD(simdjson::simdjson_result<simdjson::dom::element>, getSequences, (), (const, override));
 };
 
 struct ParsedJson
@@ -177,98 +179,62 @@ inline MockDatabasePtr createMockDatabase()
 
 TEST(TestComicsCoroutine, construct)
 {
-    const comics::Coroutine coro{nullptr, "script", SCRIPT_NAME};
+    comics::MatchGenerator coro{matches(nullptr, comics::CreditField::SCRIPT, SCRIPT_NAME)};
 }
 
 TEST(TestComicsCoroutine, notResumableFromNoDatabase)
 {
-    const comics::Coroutine coro{nullptr, "script", SCRIPT_NAME};
+    comics::MatchGenerator coro{matches(nullptr, comics::CreditField::SCRIPT, SCRIPT_NAME)};
 
     const bool resumable{coro.resume()};
 
     EXPECT_FALSE(resumable);
 }
 
-TEST(TestComicsCoroutine, notResumableFromNullDatabase)
+TEST(TestComicsCoroutine, notResumableFromNoMatchingSquences)
 {
     MockDatabasePtr db{createMockDatabase()};
-    simdjson::simdjson_result<simdjson::dom::element> issues;
-    simdjson::simdjson_result<simdjson::dom::element> sequences;
-    EXPECT_CALL(*db, getIssues()).WillOnce(ReturnRef(issues));
-    EXPECT_CALL(*db, getSequences()).WillOnce(ReturnRef(sequences));
-    comics::Coroutine coro{db, "script", SCRIPT_NAME};
-
-    const bool resumable{coro.resume()};
-
-    ASSERT_FALSE(resumable);
-}
-
-TEST(TestComicsCoroutine, notResumableFromNullIssues)
-{
-    MockDatabasePtr db{createMockDatabase()};
-    simdjson::simdjson_result<simdjson::dom::element> issues;
     ParsedJson sequences("[]");
-    EXPECT_CALL(*db, getIssues()).WillOnce(ReturnRef(issues));
-    EXPECT_CALL(*db, getSequences()).WillOnce(ReturnRef(sequences.m_document));
-    comics::Coroutine coro{db, "script", SCRIPT_NAME};
+    EXPECT_CALL(*db, getSequences()).WillOnce(Return(sequences.m_document));
+    comics::MatchGenerator coro{matches(db, comics::CreditField::SCRIPT, SCRIPT_NAME)};
 
     const bool resumable{coro.resume()};
 
     ASSERT_FALSE(resumable);
 }
 
-TEST(TestComicsCoroutine, notResumableFromNullSequences)
+TEST(TestComicsCoroutine, resumableFromFirstMatchOfMultiple)
 {
     MockDatabasePtr db{createMockDatabase()};
-    ParsedJson issues("[]");
-    simdjson::simdjson_result<simdjson::dom::element> sequences;
-    EXPECT_CALL(*db, getIssues()).WillOnce(ReturnRef(issues.m_document));
-    EXPECT_CALL(*db, getSequences()).WillOnce(ReturnRef(sequences));
-    comics::Coroutine coro{db, "script", SCRIPT_NAME};
+    ParsedJson issues{ISSUES};
+    ParsedJson sequences{SEQUENCES};
+    EXPECT_CALL(*db, getSequences()).WillOnce(Return(sequences.m_document));
+    EXPECT_CALL(*db, getIssues()).WillOnce(Return(issues.m_document));
+    comics::MatchGenerator coro{matches(db, comics::CreditField::SCRIPT, SCRIPT_NAME)};
 
     const bool resumable{coro.resume()};
+    const comics::SequenceMatch match{coro.getMatch()};
 
-    ASSERT_FALSE(resumable);
+    EXPECT_TRUE(resumable);
+    EXPECT_EQ("1", match.issue.at_key("issue number").get_string().value());
+    EXPECT_NE(std::string::npos, match.sequence.at_key("script").get_string().value().find(SCRIPT_NAME));
 }
 
-TEST(TestComicsCoroutine, notResumableFromEmptyIssues)
+TEST(TestComicsCoroutine, notResumableFromOnlyMatch)
 {
     MockDatabasePtr db{createMockDatabase()};
-    ParsedJson issues("[]");
-    ParsedJson sequences("[{}]");
-    EXPECT_CALL(*db, getIssues()).WillOnce(ReturnRef(issues.m_document));
-    EXPECT_CALL(*db, getSequences()).WillOnce(ReturnRef(sequences.m_document));
-    comics::Coroutine coro{db, "script", SCRIPT_NAME};
+    ParsedJson issues{ISSUES};
+    ParsedJson sequences{SEQUENCES};
+    EXPECT_CALL(*db, getSequences()).WillOnce(Return(sequences.m_document));
+    EXPECT_CALL(*db, getIssues()).WillOnce(Return(issues.m_document));
+    comics::MatchGenerator coro{matches(db, comics::CreditField::LETTER, LETTERS_NAME_ONE_MATCH)};
 
-    const bool resumable{coro.resume()};
+    const bool firstValue{coro.resume()};
+    const comics::SequenceMatch match{coro.getMatch()};
+    const bool secondValue{coro.resume()};
 
-    ASSERT_FALSE(resumable);
-}
-
-TEST(TestComicsCoroutine, notResumableFromEmptySequences)
-{
-    MockDatabasePtr db{createMockDatabase()};
-    ParsedJson issues("[{}]");
-    ParsedJson sequences("[]");
-    EXPECT_CALL(*db, getIssues()).WillOnce(ReturnRef(issues.m_document));
-    EXPECT_CALL(*db, getSequences()).WillOnce(ReturnRef(sequences.m_document));
-    comics::Coroutine coro{db, "script", SCRIPT_NAME};
-
-    const bool resumable{coro.resume()};
-
-    ASSERT_FALSE(resumable);
-}
-
-TEST(TestComicsCoroutine, resumableFromPopulatedArrays)
-{
-    MockDatabasePtr db{createMockDatabase()};
-    ParsedJson issues(ISSUES);
-    ParsedJson sequences(SEQUENCES);
-    EXPECT_CALL(*db, getIssues()).WillOnce(ReturnRef(issues.m_document));
-    EXPECT_CALL(*db, getSequences()).WillOnce(ReturnRef(sequences.m_document));
-    comics::Coroutine coro{db, "script", "Slartibartfast"};
-
-    const bool resumable{coro.resume()};
-
-    ASSERT_TRUE(resumable);
+    EXPECT_TRUE(firstValue);
+    EXPECT_FALSE(secondValue);
+    EXPECT_EQ("1", match.issue.at_key("issue number").get_string().value());
+    EXPECT_NE(std::string::npos, match.sequence.at_key("letters").get_string().value().find(LETTERS_NAME_ONE_MATCH));
 }
