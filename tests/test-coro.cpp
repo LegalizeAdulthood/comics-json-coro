@@ -212,10 +212,12 @@ TEST(TestComicsCoroutine, resumableFromFirstMatchOfMultiple)
     EXPECT_CALL(*db, getIssues()).WillOnce(Return(issues.m_document));
     comics::MatchGenerator coro{matches(db, comics::CreditField::SCRIPT, SCRIPT_NAME)};
 
-    const bool resumable{coro.resume()};
+    const bool firstValue{coro.resume()};
     const comics::SequenceMatch match{coro.getMatch()};
+    const bool secondValue{coro.resume()};
 
-    EXPECT_TRUE(resumable);
+    EXPECT_TRUE(firstValue);
+    EXPECT_TRUE(secondValue);
     EXPECT_EQ("1", match.issue.at_key("issue number").get_string().value());
     EXPECT_NE(std::string::npos, match.sequence.at_key("script").get_string().value().find(SCRIPT_NAME));
 }
