@@ -9,6 +9,8 @@
 
 namespace comics
 {
+namespace coroutine
+{
 
 class Database
 {
@@ -20,7 +22,7 @@ public:
 
 using DatabasePtr = std::shared_ptr<Database>;
 
-DatabasePtr createDatabase(std::string_view issues, std::string_view sequences);
+DatabasePtr createDatabase(const std::filesystem::path &jsonDir);
 
 enum class CreditField
 {
@@ -111,4 +113,5 @@ private:
 
 MatchGenerator matches(DatabasePtr database, CreditField creditField, std::string_view name);
 
+} // namespace coroutine
 } // namespace comics

@@ -149,7 +149,7 @@ constexpr std::string_view SEQUENCES{R"seq(
         }
     ])seq"};
 
-class MockDatabase : public testing::StrictMock<comics::Database>
+class MockDatabase : public testing::StrictMock<comics::coroutine::Database>
 {
 public:
     ~MockDatabase() override = default;
@@ -179,12 +179,12 @@ inline MockDatabasePtr createMockDatabase()
 
 TEST(TestComicsCoroutine, construct)
 {
-    comics::MatchGenerator coro{matches(nullptr, comics::CreditField::SCRIPT, SCRIPT_NAME)};
+    comics::coroutine::MatchGenerator coro{matches(nullptr, comics::coroutine::CreditField::SCRIPT, SCRIPT_NAME)};
 }
 
 TEST(TestComicsCoroutine, notResumableFromNoDatabase)
 {
-    comics::MatchGenerator coro{matches(nullptr, comics::CreditField::SCRIPT, SCRIPT_NAME)};
+    comics::coroutine::MatchGenerator coro{matches(nullptr, comics::coroutine::CreditField::SCRIPT, SCRIPT_NAME)};
 
     const bool resumable{coro.resume()};
 
@@ -196,7 +196,7 @@ TEST(TestComicsCoroutine, notResumableFromNoMatchingSquences)
     MockDatabasePtr db{createMockDatabase()};
     ParsedJson sequences("[]");
     EXPECT_CALL(*db, getSequences()).WillOnce(Return(sequences.m_document));
-    comics::MatchGenerator coro{matches(db, comics::CreditField::SCRIPT, SCRIPT_NAME)};
+    comics::coroutine::MatchGenerator coro{matches(db, comics::coroutine::CreditField::SCRIPT, SCRIPT_NAME)};
 
     const bool resumable{coro.resume()};
 
@@ -210,10 +210,10 @@ TEST(TestComicsCoroutine, resumableFromFirstMatchOfMultiple)
     ParsedJson sequences{SEQUENCES};
     EXPECT_CALL(*db, getSequences()).WillOnce(Return(sequences.m_document));
     EXPECT_CALL(*db, getIssues()).WillOnce(Return(issues.m_document));
-    comics::MatchGenerator coro{matches(db, comics::CreditField::SCRIPT, SCRIPT_NAME)};
+    comics::coroutine::MatchGenerator coro{matches(db, comics::coroutine::CreditField::SCRIPT, SCRIPT_NAME)};
 
     const bool firstValue{coro.resume()};
-    const comics::SequenceMatch match{coro.getMatch()};
+    const comics::coroutine::SequenceMatch match{coro.getMatch()};
     const bool secondValue{coro.resume()};
 
     EXPECT_TRUE(firstValue);
@@ -229,10 +229,10 @@ TEST(TestComicsCoroutine, notResumableFromOnlyMatch)
     ParsedJson sequences{SEQUENCES};
     EXPECT_CALL(*db, getSequences()).WillOnce(Return(sequences.m_document));
     EXPECT_CALL(*db, getIssues()).WillOnce(Return(issues.m_document));
-    comics::MatchGenerator coro{matches(db, comics::CreditField::LETTER, LETTERS_NAME_ONE_MATCH)};
+    comics::coroutine::MatchGenerator coro{matches(db, comics::coroutine::CreditField::LETTER, LETTERS_NAME_ONE_MATCH)};
 
     const bool firstValue{coro.resume()};
-    const comics::SequenceMatch match{coro.getMatch()};
+    const comics::coroutine::SequenceMatch match{coro.getMatch()};
     const bool secondValue{coro.resume()};
 
     EXPECT_TRUE(firstValue);
